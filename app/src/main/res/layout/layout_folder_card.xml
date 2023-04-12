@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_margin="1dp">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp">
+        <ImageView
+            android:id="@+id/imgFolder"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/ic_music_folder"
+            android:contentDescription="@string/songs"/>
+        <TextView
+            style="@style/textStyle_18sp"
+            android:id="@+id/txtFolder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/folder"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="10dp"
+            android:maxLines="2"
+            android:layout_toEndOf="@id/imgFolder"/>
+    </RelativeLayout>
+
+</androidx.cardview.widget.CardView>
