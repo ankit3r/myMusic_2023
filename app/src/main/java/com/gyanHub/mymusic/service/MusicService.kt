@@ -10,7 +10,9 @@ import android.media.MediaPlayer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -27,12 +29,18 @@ class MusicService : Service(), LifecycleOwner {
 
     companion object {
         private var mediaPlayer = MediaPlayer()
+        val handler = Handler(Looper.getMainLooper())
+        private var position = 0
+        private var list: List<MusicModel>? = null
+        var isPlaying = false
+        private var playThisMusic : MusicModel? = null
 
         // for check music is playing or not
         private val _isPlaying = MutableLiveData<Boolean>()
-        val isPlaying: LiveData<Boolean> = _isPlaying
+        val getIsPlaying: LiveData<Boolean> = _isPlaying
 
         fun setIsPlaying(t: Boolean) {
+            isPlaying = t
             _isPlaying.value = t
         }
 
@@ -65,6 +73,15 @@ class MusicService : Service(), LifecycleOwner {
         val currentProgressPosition: LiveData<Int> = _currentProgressPosition
         fun setProgressPosition(t: Int) {
             _currentProgressPosition.value = t
+        }
+
+        // progress
+        private val updateUI = object : Runnable {
+            override fun run() {
+                try { setProgressPosition(mediaPlayer.currentPosition) }
+                catch (e: Exception) { e.printStackTrace() }
+                if (isPlaying) { handler.postDelayed(this, 1000) }
+            }
         }
     }
 
@@ -115,26 +132,72 @@ class MusicService : Service(), LifecycleOwner {
     private fun printList() {
         newPlayingMusic.removeObservers(this)
         playingPosition.removeObservers(this)
-        var position = 0
-        var list: List<MusicModel>?
+
         playingPosition.observe(this) { po ->
             position = po
         }
         newPlayingMusic.observe(this) {
-           list = it
+            list = it
             try {
                 setMusic(list!![position])
-            }catch (e:Exception){
-                Log.e("ANKIT","Position Error $position ${list?.size}")
+            } catch (e: Exception) {
+                Log.e("ANKIT", "Position Error $position ${list?.size}")
             }
         }
         music.observe(this) {
+            playThisMusic = it
+            gatPath()
             startForeground(12, showNotification(it))
         }
     }
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
 
+    private fun gatPath() {
+        Log.e("ANKIT","playingMusic = $playThisMusic")
+        try {
+            mediaPlayer.reset()
+//            mediaPlayer.setDataSource(path)
+            mediaPlayer.prepare()
+            playMusic()
+        } catch (e: Exception) {
+            return
+        }
+
+    }
+
+    private fun playMusic() {
+        mediaPlayer.start()
+        setIsPlaying(true)
+        handler.post(object : Runnable {
+            override fun run() {
+                updateUI.run()
+                handler.postDelayed(this, 1000)
+            }
+        })
+    }
+
+    private fun pauseMusic() {
+        mediaPlayer.pause()
+        setIsPlaying(false)
+        handler.removeCallbacks(updateUI)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+            stopForeground(STOP_FOREGROUND_DETACH) else
+            stopForeground(true)
+    }
+
+    private fun nextMusic() {
+        if (position == (list!!.size - 1)) setPlayingPosition(0)
+        else setPlayingPosition(++position)
+        gatPath()
+    }
+
+    private fun previousMusic() {
+        if (position == 0) setPlayingPosition((list!!.size - 1))
+        else setPlayingPosition(--position)
+        gatPath()
+
+    }
 
 }
 
