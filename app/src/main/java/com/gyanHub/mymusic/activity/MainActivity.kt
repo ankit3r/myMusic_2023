@@ -5,10 +5,12 @@ import android.app.ActivityManager
 import android.content.*
 import android.os.*
 import android.util.Log
+import android.widget.SeekBar
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayoutMediator
+import com.google.gson.Gson
 import com.gyanHub.mymusic.R
 import com.gyanHub.mymusic.adapter.TabAdapter
 import com.gyanHub.mymusic.databinding.ActivityMainBinding
@@ -18,9 +20,16 @@ import com.gyanHub.mymusic.fragment.SongFragment
 import com.gyanHub.mymusic.model.MusicModel
 import com.gyanHub.mymusic.playHandal.SongClick
 import com.gyanHub.mymusic.service.MusicService
+import com.gyanHub.mymusic.service.MusicService.Companion.currentProgressPosition
+import com.gyanHub.mymusic.service.MusicService.Companion.getIsPlaying
+import com.gyanHub.mymusic.service.MusicService.Companion.isPlaying
 import com.gyanHub.mymusic.service.MusicService.Companion.music
-import com.gyanHub.mymusic.service.MusicService.Companion.setNewPlaying
-import com.gyanHub.mymusic.service.MusicService.Companion.setPlayingPosition
+import com.gyanHub.mymusic.service.MusicService.Companion.nextMusic
+import com.gyanHub.mymusic.service.MusicService.Companion.pauseMusic
+import com.gyanHub.mymusic.service.MusicService.Companion.playMusic
+import com.gyanHub.mymusic.service.MusicService.Companion.previousMusic
+import com.gyanHub.mymusic.service.MusicService.Companion.seekPosition
+import com.gyanHub.mymusic.service.MusicService.Companion.updatePosition
 import com.gyanHub.mymusic.viewModel.MyMusicViewModel
 import com.gyanHub.mymusic.viewModel.ShareDataViewModel
 
@@ -29,6 +38,8 @@ class MainActivity : AppCompatActivity(), SongClick {
     private lateinit var musicViewModel: MyMusicViewModel
     private lateinit var shardData: ShareDataViewModel
     private lateinit var backPressCallback: OnBackPressedCallback
+    private val handler = Handler(Looper.getMainLooper())
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,12 +49,14 @@ class MainActivity : AppCompatActivity(), SongClick {
         if (!isServiceRunning(MusicService::class.java)) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val serviceIntent = Intent(this@MainActivity, MusicService::class.java)
-                applicationContext.startForegroundService(serviceIntent)
+//                applicationContext.startForegroundService(serviceIntent)
+                applicationContext.startService(serviceIntent)
             } else {
                 val serviceIntent = Intent(this@MainActivity, MusicService::class.java)
                 applicationContext.startService(serviceIntent)
             }
         }
+
         // viewMode
         musicViewModel = ViewModelProvider(this)[MyMusicViewModel::class.java]
         shardData = ViewModelProvider(this)[ShareDataViewModel::class.java]
@@ -52,11 +65,45 @@ class MainActivity : AppCompatActivity(), SongClick {
         // for tab bar
         setTabLayout()
         // set music on player
-        music.observe(this){
+        music.observe(this) {
             binding.txtTotalTime.text = shardData.formatDuration(it.duration)
             binding.textView.text = it.title
             binding.seekBar.max = it.duration.toInt()
         }
+        binding.btnPlayPuse.setOnClickListener {
+            if (isPlaying) pauseMusic() else playMusic()
+        }
+        binding.btnNext.setOnClickListener { nextMusic() }
+        binding.btnPrevious.setOnClickListener { previousMusic() }
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            var userTouch = false
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (isPlaying && fromUser) {
+                    seekPosition(progress)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                userTouch = true
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                userTouch = false
+            }
+        })
+        currentProgressPosition.observe(this) {
+            binding.txtRemTime.text = shardData.formatDuration(it.toLong())
+            binding.seekBar.progress = it
+        }
+        updatePosition.observe(this) {
+            musicViewModel.updatePlayingPosition(it)
+        }
+        getIsPlaying.observe(this) {
+            if (it) binding.btnPlayPuse.setImageResource(R.drawable.ic_pause)
+            else binding.btnPlayPuse.setImageResource(R.drawable.ic_play)
+        }
+
+
     }
 
     // setUp TabLayout
@@ -75,28 +122,32 @@ class MainActivity : AppCompatActivity(), SongClick {
 
     // to get all data when click on any music
     private fun getMusic() {
-        Log.d("ANKIT", "get music")
+        var musicList: List<MusicModel>? = null
         val motionLayout = binding.motionLayout
         val (storedFilePath, storedPosition, _) = musicViewModel.getPlayingMusic()
-        setPlayingPosition(storedPosition)
         when (musicViewModel.getPlayingMusic().third) {
             getString(R.string.songF) -> {
-                var musicList : List<MusicModel>? = null
+
                 musicViewModel.listOfMusic.observe(this) {
                     musicList = it
-                    setNewPlaying(musicList!!)
-                    Log.d("ANKIT", "get music in main $musicList ")
                 }
                 motionLayout.transitionToState(R.id.startSong)
             }
             getString(R.string.folderF) -> {
                 musicViewModel.getMusicFromFolder(storedFilePath!!)
                 musicViewModel.listOfMusicFromFolder.observe(this) {
-                    setNewPlaying(it)
+                    musicList = it
                 }
                 motionLayout.transitionToState(R.id.startSong)
             }
         }
+        handler.postDelayed({
+            val musicListJson = Gson().toJson(musicList)
+            val intent = Intent(this, MusicService::class.java)
+            intent.putExtra("musicList", musicListJson)
+            intent.putExtra("position", storedPosition)
+            startService(intent)
+        }, 100)
 
     }
 
@@ -114,4 +165,6 @@ class MainActivity : AppCompatActivity(), SongClick {
         Log.d("ANKIT", "on song click")
         getMusic()
     }
+
+
 }
