@@ -80,21 +80,6 @@ class SongFragment : Fragment(), MusicPlay {
                 musicViewModel.savePlayingMusicData(position,getString(R.string.songF))
             }
         }
-
-
-//        if (fromMusic.isNotEmpty()){
-//            if (fromMusic == getString(R.string.songF)){
-//                shardData.setPlaingPosition(position)
-//            }else{
-//                shardData.setMusicFrom(getString(R.string.songF))
-//                shardData.setPlaingPosition(position)
-//                shardData.setPlayingMusicList(list)
-//            }
-//        }else{
-//            shardData.setMusicFrom(getString(R.string.songF))
-//            shardData.setPlaingPosition(position)
-//            shardData.setPlayingMusicList(list)
-//        }
         songListner!!.onSongClick()
     }
 }

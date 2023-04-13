@@ -22,17 +22,49 @@ import com.gyanHub.mymusic.R
 import com.gyanHub.mymusic.model.MusicModel
 import com.gyanHub.mymusic.utils.MyApplication.Companion.CHANNEL_ID
 
-class MusicService : Service() , LifecycleOwner {
+class MusicService : Service(), LifecycleOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
-    companion object{
-        var mediaPlayer = MediaPlayer()
-        var isPlaying = false
-        var isSurviceRuning = false
-        private val _newPlayingMusic = MutableLiveData< List<MusicModel>>()
-        val newPlayingMusic: LiveData< List<MusicModel>> = _newPlayingMusic
-        var playingPosition = 0
-        fun setNewPlaying( list: List<MusicModel>){
+
+    companion object {
+        private var mediaPlayer = MediaPlayer()
+
+        // for check music is playing or not
+        private val _isPlaying = MutableLiveData<Boolean>()
+        val isPlaying: LiveData<Boolean> = _isPlaying
+
+        fun setIsPlaying(t: Boolean) {
+            _isPlaying.value = t
+        }
+
+        // for position
+        private val _position = MutableLiveData<Int>()
+        val playingPosition: LiveData<Int> = _position
+
+        fun setPlayingPosition(t: Int) {
+            _position.value = t
+        }
+
+        // for list of music
+        private val _newPlayingMusic = MutableLiveData<List<MusicModel>>()
+        val newPlayingMusic: LiveData<List<MusicModel>> = _newPlayingMusic
+
+        fun setNewPlaying(list: List<MusicModel>) {
+            Log.d("ANKIT", "print function set New Playing")
             _newPlayingMusic.value = list
+        }
+
+        // for current music Model or Music Details
+        private val _music = MutableLiveData<MusicModel>()
+        val music: LiveData<MusicModel> = _music
+        fun setMusic(t: MusicModel) {
+            _music.value = t
+        }
+
+        // for seekbar current position
+        private val _currentProgressPosition = MutableLiveData<Int>()
+        val currentProgressPosition: LiveData<Int> = _currentProgressPosition
+        fun setProgressPosition(t: Int) {
+            _currentProgressPosition.value = t
         }
     }
 
@@ -40,14 +72,13 @@ class MusicService : Service() , LifecycleOwner {
         return null
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(12, showNotification())
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
         printList()
         return super.onStartCommand(intent, flags, startId)
     }
 
-    private fun showNotification(): Notification {
+    private fun showNotification(music: MusicModel): Notification {
         val mediaSession = MediaSessionCompat(this, "tag")
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setStyle(
@@ -56,22 +87,22 @@ class MusicService : Service() , LifecycleOwner {
             )
             .setSmallIcon(R.drawable.ic_music_24)
             .build()
-        mediaSession.setMetadata(setMataData())
+        mediaSession.setMetadata(setMataData(music))
         mediaSession.setPlaybackState(setPlayBack())
 
         return notification
     }
 
-    private fun setMataData(): MediaMetadataCompat {
+    private fun setMataData(data: MusicModel): MediaMetadataCompat {
         return MediaMetadataCompat.Builder()
-            .putString(MediaMetadata.METADATA_KEY_TITLE, "Song Title")
-            .putString(MediaMetadata.METADATA_KEY_ARTIST, "Artist Name")
-            .putString(MediaMetadata.METADATA_KEY_ALBUM, "Album Title")
+            .putString(MediaMetadata.METADATA_KEY_TITLE, data.title)
+            .putString(MediaMetadata.METADATA_KEY_ARTIST, data.artist)
+            .putString(MediaMetadata.METADATA_KEY_ALBUM, data.album)
             .putBitmap(
                 MediaMetadata.METADATA_KEY_ALBUM_ART,
                 BitmapFactory.decodeResource(resources, R.drawable.ic_music_logo)
             )
-            .putLong(MediaMetadata.METADATA_KEY_DURATION, 4)
+            .putLong(MediaMetadata.METADATA_KEY_DURATION, data.duration.toLong())
             .build()
     }
 
@@ -81,10 +112,24 @@ class MusicService : Service() , LifecycleOwner {
             .setActions(PlaybackStateCompat.ACTION_SEEK_TO).build()
     }
 
-    fun printList(){
-        newPlayingMusic.observe(this){
-            Log.d("Ankit",it.toString())
-
+    private fun printList() {
+        newPlayingMusic.removeObservers(this)
+        playingPosition.removeObservers(this)
+        var position = 0
+        var list: List<MusicModel>?
+        playingPosition.observe(this) { po ->
+            position = po
+        }
+        newPlayingMusic.observe(this) {
+           list = it
+            try {
+                setMusic(list!![position])
+            }catch (e:Exception){
+                Log.e("ANKIT","Position Error $position ${list?.size}")
+            }
+        }
+        music.observe(this) {
+            startForeground(12, showNotification(it))
         }
     }
 
