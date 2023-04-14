@@ -50,7 +50,6 @@ class FolderMusicFragment : Fragment(), MusicPlay {
             }
         }else{
             val musicList = arguments?.getSerializable("musicList") as? List<MusicModel>
-            Log.w("ANKIT",musicList.toString())
             setMusicInView(musicList!!)
         }
 
@@ -70,12 +69,10 @@ class FolderMusicFragment : Fragment(), MusicPlay {
 
     override fun onClick(position: Int, list: List<MusicModel>) = addData(position)
 
-
     private fun addData(position: Int) {
         val filePath = arguments?.getString("FilePath")
         val albumP = arguments?.getInt("albumP")!!.toInt()
         if (filePath != null) {
-            Toast.makeText(context, "not null filepath", Toast.LENGTH_SHORT).show()
             val (_, _, storedFileName) = musicViewModel.getPlayingMusic()
             if (storedFileName.isNullOrEmpty()) {
                 musicViewModel.savePlayingMusicData(position, getString(R.string.folderF))
@@ -90,7 +87,6 @@ class FolderMusicFragment : Fragment(), MusicPlay {
                 }
             }
         } else {
-            Toast.makeText(context, "null filepath", Toast.LENGTH_SHORT).show()
             val (_, _, storedFileName) = musicViewModel.getPlayingMusic()
             if (storedFileName.isNullOrEmpty()) {
                 musicViewModel.savePlayingMusicData(position, getString(R.string.albumF))

@@ -10,6 +10,7 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ServiceCompat.stopForeground
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayoutMediator
@@ -35,6 +36,7 @@ import com.gyanHub.mymusic.service.MusicService.Companion.seekPosition
 import com.gyanHub.mymusic.service.MusicService.Companion.updatePosition
 import com.gyanHub.mymusic.viewModel.MyMusicViewModel
 import com.gyanHub.mymusic.viewModel.ShareDataViewModel
+import kotlin.system.exitProcess
 
 class MainActivity : AppCompatActivity(), SongClick {
     private lateinit var binding: ActivityMainBinding
@@ -53,7 +55,7 @@ class MainActivity : AppCompatActivity(), SongClick {
         // service call
         if (!isServiceRunning(MusicService::class.java)) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                 serviceIntent = Intent(this@MainActivity, MusicService::class.java)
+                serviceIntent = Intent(this@MainActivity, MusicService::class.java)
 //                applicationContext.startForegroundService(serviceIntent)
                 ContextCompat.startForegroundService(this, serviceIntent!!)
                 isServiceRunning = true
@@ -125,10 +127,11 @@ class MainActivity : AppCompatActivity(), SongClick {
 
 
     // to get all data when click on any music
-    private fun getMusic(onClick:Boolean) {
+    private fun getMusic(onClick: Boolean) {
         var musicList: List<MusicModel>? = null
         val motionLayout = binding.motionLayout
         val (storedFilePath, storedPosition, _) = musicViewModel.getPlayingMusic()
+
         when (musicViewModel.getPlayingMusic().third) {
             getString(R.string.songF) -> {
 
@@ -144,16 +147,23 @@ class MainActivity : AppCompatActivity(), SongClick {
                 }
                 motionLayout.transitionToState(R.id.startSong)
             }
+            getString(R.string.albumF) -> {
+
+                musicViewModel.listOfAlbum.observe(this) {
+                  musicList = it[musicViewModel.getAlbumPath()].songs
+                }
+                motionLayout.transitionToState(R.id.startSong)
+            }
         }
-       if(!isPlaying || onClick){
-           handler.postDelayed({
-               val musicListJson = Gson().toJson(musicList)
-               val intent = Intent(this, MusicService::class.java)
-               intent.putExtra("musicList", musicListJson)
-               intent.putExtra("position", storedPosition)
-               startService(intent)
-           }, 100)
-       }
+        if (!isPlaying || onClick) {
+            handler.postDelayed({
+                val musicListJson = Gson().toJson(musicList)
+                val intent = Intent(this, MusicService::class.java)
+                intent.putExtra("musicList", musicListJson)
+                intent.putExtra("position", storedPosition)
+                startService(intent)
+            }, 100)
+        }
 
     }
 
@@ -176,8 +186,7 @@ class MainActivity : AppCompatActivity(), SongClick {
         super.onDestroy()
         if (isServiceRunning && !isPlaying) {
             stopService(serviceIntent)
-            isServiceRunning = false
-            Toast.makeText(this, "service distroy", Toast.LENGTH_SHORT).show()
+            exitProcess(1)
         }
     }
 }

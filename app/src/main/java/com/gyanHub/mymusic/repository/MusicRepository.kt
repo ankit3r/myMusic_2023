@@ -109,6 +109,9 @@ class MusicRepository(private val context: Context) {
         val fileName = sharedPreferences.getString("fileName", null)
         return Triple(filePath, position, fileName)
     }
+    fun getAlbumPath() :Int{
+       return sharedPreferences.getInt("albumPosition", 0)
+    }
 
 
 //    fun getAlbum() {

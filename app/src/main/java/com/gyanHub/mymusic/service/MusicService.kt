@@ -262,9 +262,9 @@ class MusicService : Service(), ViewModelStoreOwner, LifecycleOwner,
         super.onDestroy()
         viewModelStores.clear()
         mediaPlayer.release()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
-            stopForeground(STOP_FOREGROUND_DETACH)
-        else stopForeground(true)
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+//            stopForeground(STOP_FOREGROUND_DETACH)
+//        else stopForeground(true)
     }
 
     override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {

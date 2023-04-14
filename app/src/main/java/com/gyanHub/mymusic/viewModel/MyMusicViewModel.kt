@@ -55,6 +55,9 @@ class MyMusicViewModel(application: Application) : AndroidViewModel(application)
     private fun getAlbum(){
         _listOfAlbum.value = musicRepository.getAlbum()
     }
+     fun getAlbumPath():Int{
+       return musicRepository.getAlbumPath()
+    }
 
     fun updatePlayingPosition(position: Int) {
         musicRepository.updateMusicPosition(position)
