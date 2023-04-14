@@ -2,12 +2,15 @@ package com.gyanHub.mymusic.activity
 
 
 import android.app.ActivityManager
+import android.app.Service
 import android.content.*
 import android.os.*
 import android.util.Log
 import android.widget.SeekBar
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayoutMediator
 import com.google.gson.Gson
@@ -39,6 +42,8 @@ class MainActivity : AppCompatActivity(), SongClick {
     private lateinit var shardData: ShareDataViewModel
     private lateinit var backPressCallback: OnBackPressedCallback
     private val handler = Handler(Looper.getMainLooper())
+    private var serviceIntent: Intent? = null
+    private var isServiceRunning = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,9 +53,11 @@ class MainActivity : AppCompatActivity(), SongClick {
         // service call
         if (!isServiceRunning(MusicService::class.java)) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val serviceIntent = Intent(this@MainActivity, MusicService::class.java)
+                 serviceIntent = Intent(this@MainActivity, MusicService::class.java)
 //                applicationContext.startForegroundService(serviceIntent)
-                applicationContext.startService(serviceIntent)
+                ContextCompat.startForegroundService(this, serviceIntent!!)
+                isServiceRunning = true
+//                applicationContext.startService(serviceIntent)
             } else {
                 val serviceIntent = Intent(this@MainActivity, MusicService::class.java)
                 applicationContext.startService(serviceIntent)
@@ -61,7 +68,7 @@ class MainActivity : AppCompatActivity(), SongClick {
         musicViewModel = ViewModelProvider(this)[MyMusicViewModel::class.java]
         shardData = ViewModelProvider(this)[ShareDataViewModel::class.java]
         // to get last playing music
-        getMusic()
+        getMusic(false)
         // for tab bar
         setTabLayout()
         // set music on player
@@ -78,7 +85,7 @@ class MainActivity : AppCompatActivity(), SongClick {
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             var userTouch = false
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (isPlaying && fromUser) {
+                if (fromUser) {
                     seekPosition(progress)
                 }
             }
@@ -88,21 +95,18 @@ class MainActivity : AppCompatActivity(), SongClick {
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                userTouch = false
+                userTouch = true
             }
         })
         currentProgressPosition.observe(this) {
             binding.txtRemTime.text = shardData.formatDuration(it.toLong())
             binding.seekBar.progress = it
         }
-        updatePosition.observe(this) {
-            musicViewModel.updatePlayingPosition(it)
-        }
+
         getIsPlaying.observe(this) {
             if (it) binding.btnPlayPuse.setImageResource(R.drawable.ic_pause)
             else binding.btnPlayPuse.setImageResource(R.drawable.ic_play)
         }
-
 
     }
 
@@ -121,7 +125,7 @@ class MainActivity : AppCompatActivity(), SongClick {
 
 
     // to get all data when click on any music
-    private fun getMusic() {
+    private fun getMusic(onClick:Boolean) {
         var musicList: List<MusicModel>? = null
         val motionLayout = binding.motionLayout
         val (storedFilePath, storedPosition, _) = musicViewModel.getPlayingMusic()
@@ -141,13 +145,15 @@ class MainActivity : AppCompatActivity(), SongClick {
                 motionLayout.transitionToState(R.id.startSong)
             }
         }
-        handler.postDelayed({
-            val musicListJson = Gson().toJson(musicList)
-            val intent = Intent(this, MusicService::class.java)
-            intent.putExtra("musicList", musicListJson)
-            intent.putExtra("position", storedPosition)
-            startService(intent)
-        }, 100)
+       if(!isPlaying || onClick){
+           handler.postDelayed({
+               val musicListJson = Gson().toJson(musicList)
+               val intent = Intent(this, MusicService::class.java)
+               intent.putExtra("musicList", musicListJson)
+               intent.putExtra("position", storedPosition)
+               startService(intent)
+           }, 100)
+       }
 
     }
 
@@ -163,8 +169,15 @@ class MainActivity : AppCompatActivity(), SongClick {
 
     override fun onSongClick() {
         Log.d("ANKIT", "on song click")
-        getMusic()
+        getMusic(true)
     }
 
-
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isServiceRunning && !isPlaying) {
+            stopService(serviceIntent)
+            isServiceRunning = false
+            Toast.makeText(this, "service distroy", Toast.LENGTH_SHORT).show()
+        }
+    }
 }

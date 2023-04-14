@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.gyanHub.mymusic.R
@@ -26,7 +27,6 @@ class FolderMusicFragment : Fragment(), MusicPlay {
     private lateinit var musicViewModel: MyMusicViewModel
     private lateinit var shardData: ShareDataViewModel
     private var songListner: SongClick? = null
-    private var fromMusic: String = ""
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -43,12 +43,17 @@ class FolderMusicFragment : Fragment(), MusicPlay {
 
         musicViewModel = ViewModelProvider(requireActivity())[MyMusicViewModel::class.java]
         shardData = ViewModelProvider(requireActivity())[ShareDataViewModel::class.java]
-        musicViewModel.listOfMusicFromFolder.observe(viewLifecycleOwner) {
-            setMusicInView(it)
+        val filePath = arguments?.getString("FilePath")
+        if (filePath != null) {
+            musicViewModel.listOfMusicFromFolder.observe(viewLifecycleOwner) {
+                setMusicInView(it)
+            }
+        }else{
+            val musicList = arguments?.getSerializable("musicList") as? List<MusicModel>
+            Log.w("ANKIT",musicList.toString())
+            setMusicInView(musicList!!)
         }
-        shardData.musicFrom.observe(viewLifecycleOwner) {
-            fromMusic = it
-        }
+
 
     }
 
@@ -63,42 +68,44 @@ class FolderMusicFragment : Fragment(), MusicPlay {
         _binding = null
     }
 
-    override fun onClick(position: Int, list: List<MusicModel>) {
-        addData(position,list)
+    override fun onClick(position: Int, list: List<MusicModel>) = addData(position)
 
-    }
 
-    private fun addData(position: Int, list: List<MusicModel>){
+    private fun addData(position: Int) {
         val filePath = arguments?.getString("FilePath")
-        val (_, _, storedFileName) = musicViewModel.getPlayingMusic()
-        if (storedFileName.isNullOrEmpty()){
-            musicViewModel.savePlayingMusicData(position,getString(R.string.folderF))
-            musicViewModel.updatePlayingFolder(filePath!!)
-        }else{
-            if (storedFileName == getString(R.string.folderF)){
-                musicViewModel.updatePlayingPosition(position)
-                musicViewModel.updatePlayingFolder(filePath!!)
-            }else{
-                musicViewModel.savePlayingMusicData(position,getString(R.string.folderF))
-                musicViewModel.updatePlayingFolder(filePath!!)
+        val albumP = arguments?.getInt("albumP")!!.toInt()
+        if (filePath != null) {
+            Toast.makeText(context, "not null filepath", Toast.LENGTH_SHORT).show()
+            val (_, _, storedFileName) = musicViewModel.getPlayingMusic()
+            if (storedFileName.isNullOrEmpty()) {
+                musicViewModel.savePlayingMusicData(position, getString(R.string.folderF))
+                musicViewModel.updatePlayingFolder(filePath)
+            } else {
+                if (storedFileName == getString(R.string.folderF)) {
+                    musicViewModel.updatePlayingPosition(position)
+                    musicViewModel.updatePlayingFolder(filePath)
+                } else {
+                    musicViewModel.savePlayingMusicData(position, getString(R.string.folderF))
+                    musicViewModel.updatePlayingFolder(filePath)
+                }
+            }
+        } else {
+            Toast.makeText(context, "null filepath", Toast.LENGTH_SHORT).show()
+            val (_, _, storedFileName) = musicViewModel.getPlayingMusic()
+            if (storedFileName.isNullOrEmpty()) {
+                musicViewModel.savePlayingMusicData(position, getString(R.string.albumF))
+                musicViewModel.updateAlbumPosition(albumP)
+            } else {
+                if (storedFileName == getString(R.string.albumF)) {
+                    musicViewModel.updatePlayingPosition(position)
+                    musicViewModel.updateAlbumPosition(albumP)
+                } else {
+                    musicViewModel.savePlayingMusicData(position, getString(R.string.albumF))
+                    musicViewModel.updateAlbumPosition(albumP)
+                }
             }
         }
 
-
-
-//        if (fromMusic.isNotEmpty()){
-//            if (fromMusic == getString(R.string.folderF)){
-//                shardData.setPlaingPosition(position)
-//            }else{
-//                shardData.setMusicFrom(getString(R.string.folderF))
-//                shardData.setPlaingPosition(position)
-//                shardData.setPlayingMusicList(list)
-//            }
-//        }else{
-//            shardData.setMusicFrom(getString(R.string.folderF))
-//            shardData.setPlaingPosition(position)
-//            shardData.setPlayingMusicList(list)
-//        }
         songListner!!.onSongClick()
     }
 }

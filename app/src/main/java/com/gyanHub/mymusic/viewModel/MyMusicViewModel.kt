@@ -1,10 +1,12 @@
 package com.gyanHub.mymusic.viewModel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.gyanHub.mymusic.model.Album
 import com.gyanHub.mymusic.model.MusicModel
 import com.gyanHub.mymusic.repository.MusicRepository
 import kotlinx.coroutines.launch
@@ -12,6 +14,9 @@ import kotlinx.coroutines.launch
 
 class MyMusicViewModel(application: Application) : AndroidViewModel(application) {
     private val musicRepository = MusicRepository(application)
+    private val _listOfAlbum = MutableLiveData<List<Album>>()
+    val listOfAlbum: LiveData<List<Album>> = _listOfAlbum
+
     private val _listOfMusic = MutableLiveData<List<MusicModel>>()
     val listOfMusic: LiveData<List<MusicModel>> = _listOfMusic
 
@@ -47,8 +52,15 @@ class MyMusicViewModel(application: Application) : AndroidViewModel(application)
         return musicRepository.getMusicData()
     }
 
+    private fun getAlbum(){
+        _listOfAlbum.value = musicRepository.getAlbum()
+    }
+
     fun updatePlayingPosition(position: Int) {
         musicRepository.updateMusicPosition(position)
+    }
+    fun updateAlbumPosition(position: Int) {
+        musicRepository.updateAlbumPosition(position)
     }
 
     fun updatePlayingFolder(filePath: String) {
@@ -58,5 +70,6 @@ class MyMusicViewModel(application: Application) : AndroidViewModel(application)
     init {
         getAllMusic()
         getAllMusicFolders()
+        getAlbum()
     }
 }

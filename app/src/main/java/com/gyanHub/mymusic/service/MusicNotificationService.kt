@@ -13,17 +13,14 @@ class MusicNotificationService : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         when (intent?.action) {
             MyApplication.PREVIOUS -> {
-                val broadcastIntent = Intent("previous")
-                LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent)
+               MusicService.previousMusic()
             }
             MyApplication.PLAY -> {
-                val broadcastIntent = Intent("play")
-                LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent)
+                if (MusicService.isPlaying) MusicService.pauseMusic() else MusicService.playMusic()
 
             }
             MyApplication.NEXT -> {
-                val broadcastIntent = Intent("next")
-                LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent)
+             MusicService.nextMusic()
             }
             MyApplication.EXIT -> {
                 val broadcastIntent = Intent("exit")

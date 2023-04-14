@@ -2,6 +2,7 @@
     <string name="app_name">MyMusic</string>
     <string name="logo">Logo</string>
     <string name="album">Album</string>
+    <string name="albumPath">Album %s</string>
     <string name="songs">Songs</string>
     <string name="folder">Folder</string>
     <string name="folderLocation">Folder %s</string>
@@ -16,6 +17,7 @@
     <string name="time">00:00</string>
     <string name="totalTime">Loading..</string>
     <string name="folderF">folderF..</string>
+    <string name="albumF">albumF..</string>
     <string name="songF">songF..</string>
     <string name="next">next</string>
     <string name="backword">backword</string>
